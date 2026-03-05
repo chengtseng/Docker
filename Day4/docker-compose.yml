@@ -7,6 +7,12 @@ services:
     depends_on:
       - db
     restart: always
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    command: npx nodemon server.js
   db:
     image: postgres:15
     environment:
