@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRUD App</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f0f2f5;
+      color: #333;
+    }
+    h1 { margin-bottom: 24px; font-size: 28px; }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: #4CAF50; }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    .btn-add { background: #4CAF50; color: white; }
+    .btn-save { background: #2196F3; color: white; }
+    .btn-edit { background: #ff9800; color: white; }
+    .btn-delete { background: #f44336; color: white; }
+    .btn-cancel { background: #9e9e9e; color: white; }
+    .entry {
+      background: white;
+      padding: 16px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .entry-info { flex: 1; margin-right: 12px; }
+    .entry-content { font-size: 16px; margin-bottom: 4px; }
+    .entry-time { color: #999; font-size: 12px; }
+    .entry-actions { display: flex; gap: 6px; }
+    .edit-input {
+      flex: 1;
+      padding: 8px;
+      border: 2px solid #2196F3;
+      border-radius: 6px;
+      font-size: 16px;
+      outline: none;
+    }
+    .empty { text-align: center; color: #999; padding: 40px; }
+  </style>
+</head>
+<body>
+  <h1>CRUD Entries</h1>
+  <div class="input-row">
+    <input type="text" id="newContent" placeholder="Type something..." onkeydown="if(event.key==='Enter') createEntry()">
+    <button class="btn-add" onclick="createEntry()">Add</button>
+  </div>
+  <div id="entries"></div>
+
+  <script>
+    const API = "/entries";
+
+    async function loadEntries() {
+      const res = await fetch(API);
+      const entries = await res.json();
+      const container = document.getElementById("entries");
+
+      if (entries.length === 0) {
+        container.innerHTML = '<div class="empty">No entries yet. Add one above.</div>';
+        return;
+      }
+
+      container.innerHTML = entries.map(e => `
+        <div class="entry" id="entry-${e.id}">
+          <div class="entry-info">
+            <div class="entry-content">${escapeHtml(e.content)}</div>
+            <div class="entry-time">${new Date(e.created_at).toLocaleString()}</div>
+          </div>
+          <div class="entry-actions">
+            <button class="btn-edit" onclick="editEntry(${e.id}, '${escapeJs(e.content)}')">Edit</button>
+            <button class="btn-delete" onclick="deleteEntry(${e.id})">Delete</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function createEntry() {
+      const input = document.getElementById("newContent");
+      const content = input.value.trim();
+      if (!content) return;
+
+      await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      input.value = "";
+      loadEntries();
+    }
+
+    async function deleteEntry(id) {
+      await fetch(`${API}/${id}`, { method: "DELETE" });
+      loadEntries();
+    }
+
+    function editEntry(id, current) {
+      const entry = document.getElementById(`entry-${id}`);
+      entry.innerHTML = `
+        <input class="edit-input" type="text" id="edit-${id}" value="${escapeHtml(current)}" onkeydown="if(event.key==='Enter') saveEntry(${id})">
+        <div class="entry-actions">
+          <button class="btn-save" onclick="saveEntry(${id})">Save</button>
+          <button class="btn-cancel" onclick="loadEntries()">Cancel</button>
+        </div>
+      `;
+      document.getElementById(`edit-${id}`).focus();
+    }
+
+    async function saveEntry(id) {
+      const content = document.getElementById(`edit-${id}`).value.trim();
+      if (!content) return;
+
+      await fetch(`${API}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      loadEntries();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function escapeJs(str) {
+      return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    }
+
+    loadEntries();
+  </script>
+</body>
+</html>
